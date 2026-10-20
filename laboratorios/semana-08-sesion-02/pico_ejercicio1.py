@@ -18,7 +18,14 @@ def simular_pico(servidor, cantidad, duracion):
     # una y otra (llegan todas en el mismo segundo). Cuenta cuantas
     # atendio el servidor y cuantas rechazo, y devuelve las dos cuentas
     # como una tupla (atendidas, rechazadas).
-    raise NotImplementedError
+
+    peticionesAtendidas = 0
+
+    for peticion in range(cantidad):
+        if servidor.atender(duracion):
+            peticionesAtendidas += 1
+
+    return (peticionesAtendidas, cantidad - peticionesAtendidas)
 
 
 if __name__ == "__main__":

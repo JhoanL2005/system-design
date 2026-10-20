@@ -28,4 +28,12 @@ class BalanceadorRoundRobin:
         # Si un servidor acepto la solicitud, deja self.siguiente apuntando
         # al servidor que viene despues de el y devuelve servidor.nombre.
         # Si ninguno la acepto, devuelve None.
-        raise NotImplementedError
+
+        for i in range(len(self.servidores)):
+            posicion = (self.siguiente + i) % len(self.servidores)
+            servidor = self.servidores[posicion]
+            if servidor.health_check() and servidor.atender(duracion):
+                self.siguiente = (posicion + 1) % len(self.servidores)
+                return servidor.nombre
+            
+        return None
