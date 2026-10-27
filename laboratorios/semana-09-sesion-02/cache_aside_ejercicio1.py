@@ -33,12 +33,12 @@ class ServicioConCacheAside:
     def disponibilidad(self, cancha, fecha):
         clave = (cancha, fecha)
         if clave in self.cache:
-            self.aciertos = self.aciertos + 1
+            self.aciertos += 1
             return self.cache[clave]
-        self.fallos = self.fallos + 1
-        libres = self.repositorio.consultar_disponibilidad(cancha, fecha)
-        self.cache[clave] = libres
-        return libres
+        self.fallos += 1
+        disponible = self.repositorio.consultar_disponibilidad(cancha, fecha)
+        self.cache[clave] = disponible
+        return disponible
 
 def medir(servicio, repeticiones):
     inicio = time.perf_counter()
