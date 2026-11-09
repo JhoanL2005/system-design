@@ -54,19 +54,35 @@ class ServidorSinEstado:
         self.cola = cola
         self.almacen = almacen
 
+    # Ningun metodo guarda datos del estudiante en self: el borrador vive en
+    # el almacen compartido, asi que cualquier servidor puede atender
+    # cualquier paso de la reserva.
+
+    def clave_de(self, estudiante):
+        return "borrador:" + estudiante
+
     def iniciar(self, estudiante, cancha):
-        # TODO: guarda el borrador {"cancha": ..., "hora": None} en
-        # self.almacen, con la clave "borrador:" + estudiante. Devuelve "ok".
-        raise NotImplementedError
+        self.almacen.guardar(self.clave_de(estudiante), {"cancha": cancha, "hora": None})
+        return "ok"
 
     def elegir_hora(self, estudiante, hora):
-        # TODO: mismo comportamiento que ServidorConEstado.elegir_hora, con
-        # el borrador leido del almacen. Recuerda que el almacen entrega una
-        # copia: si cambias la hora, vuelve a guardar el borrador.
-        raise NotImplementedError
+        borrador = self.almacen.leer(self.clave_de(estudiante))
+        if borrador is None:
+            return "sin borrador"
+        if not self.repositorio.esta_libre(borrador["cancha"], hora):
+            return "ocupada"
+        borrador["hora"] = hora
+        # El almacen entrego una copia: hay que volver a guardarla.
+        self.almacen.guardar(self.clave_de(estudiante), borrador)
+        return "ok"
 
     def confirmar(self, estudiante):
-        # TODO: mismo comportamiento que ServidorConEstado.confirmar, con el
-        # borrador leido del almacen. Al confirmar, borra el borrador del
-        # almacen.
-        raise NotImplementedError
+        borrador = self.almacen.leer(self.clave_de(estudiante))
+        if borrador is None or borrador["hora"] is None:
+            return "sin borrador"
+        if not self.repositorio.esta_libre(borrador["cancha"], borrador["hora"]):
+            return "ocupada"
+        self.repositorio.registrar(estudiante, borrador["cancha"], borrador["hora"])
+        self.cola.publicar({"estudiante": estudiante, "cancha": borrador["cancha"], "hora": borrador["hora"]})
+        self.almacen.borrar(self.clave_de(estudiante))
+        return "confirmada"

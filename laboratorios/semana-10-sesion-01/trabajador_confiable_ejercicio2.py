@@ -20,14 +20,20 @@ class TrabajadorConfiable:
         self.max_intentos = max_intentos
 
     def procesar_uno(self):
-        # TODO: recibe un mensaje de self.cola. Si no hay ninguno, devuelve
-        # False.
-        # Envia el correo al estudiante del cuerpo, con
-        # asunto_de_confirmacion(cuerpo).
-        # - Si el envio salio bien, confirma el mensaje.
-        # - Si fallo y el mensaje ya lleva self.max_intentos intentos,
-        #   publica su cuerpo en self.cola_de_muertos y confirmalo en
-        #   self.cola, para que no vuelva.
-        # - Si fallo y le quedan intentos, no lo confirmes.
-        # En los tres casos, devuelve True.
-        raise NotImplementedError
+        mensaje = self.cola.recibir()
+        if mensaje is None:
+            return False
+        cuerpo = mensaje["cuerpo"]
+        # Primero se envia y despues se confirma: si el trabajador cae entre
+        # las dos lineas, el mensaje sigue en la cola y vuelve cuando vence
+        # su visibilidad (entrega "al menos una vez").
+        enviado = self.correo.enviar(cuerpo["estudiante"], asunto_de_confirmacion(cuerpo))
+        if enviado:
+            self.cola.confirmar(mensaje["id"])
+        elif mensaje["intentos"] >= self.max_intentos:
+            # Agoto sus intentos: primero se publica en la cola de mensajes
+            # muertos y recien despues se confirma, para no perderlo.
+            self.cola_de_muertos.publicar(cuerpo)
+            self.cola.confirmar(mensaje["id"])
+        # Si fallo y le quedan intentos, no se confirma: vuelve a la cola.
+        return True

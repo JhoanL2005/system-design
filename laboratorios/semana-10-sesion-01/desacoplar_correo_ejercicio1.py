@@ -36,12 +36,15 @@ class ServicioConCola:
         self.cola = cola
 
     def reservar(self, estudiante, cancha, hora):
-        # TODO 1: igual que ServicioSincrono, pero sin tocar el correo. Si
-        # la hora esta libre, registra la reserva, publica en self.cola un
-        # mensaje con el cuerpo {"estudiante": ..., "cancha": ...,
-        # "hora": ...} y devuelve "confirmada". Si no esta libre, devuelve
-        # "ocupada" sin publicar nada.
-        raise NotImplementedError
+        # Igual que ServicioSincrono, pero sin tocar el correo: la reserva
+        # se confirma apenas queda registrada, y el correo queda como un
+        # mensaje en la cola para que lo envie el trabajador.
+        if not self.repositorio.esta_libre(cancha, hora):
+            return "ocupada"
+        self.repositorio.registrar(estudiante, cancha, hora)
+        cuerpo = {"estudiante": estudiante, "cancha": cancha, "hora": hora}
+        self.cola.publicar(cuerpo)
+        return "confirmada"
 
 
 class TrabajadorDeCorreo:
@@ -50,11 +53,17 @@ class TrabajadorDeCorreo:
         self.correo = correo
 
     def procesar_pendientes(self):
-        # TODO 2: mientras self.cola.recibir() entregue un mensaje, envia el
-        # correo al estudiante del cuerpo, con asunto_de_confirmacion(cuerpo).
-        # Si el envio salio bien, confirma el mensaje con su "id". Si fallo,
-        # deja de procesar sin confirmarlo.
-        raise NotImplementedError
+        # Mientras haya mensajes, envia cada correo y confirma el mensaje
+        # solo si el envio salio bien. Si falla, se detiene sin confirmar:
+        # el mensaje queda en la cola y vuelve cuando venza su visibilidad.
+        mensaje = self.cola.recibir()
+        while mensaje is not None:
+            cuerpo = mensaje["cuerpo"]
+            enviado = self.correo.enviar(cuerpo["estudiante"], asunto_de_confirmacion(cuerpo))
+            if not enviado:
+                return
+            self.cola.confirmar(mensaje["id"])
+            mensaje = self.cola.recibir()
 
 
 if __name__ == "__main__":

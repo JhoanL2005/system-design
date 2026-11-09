@@ -39,7 +39,8 @@ class ApiReservaU:
         if cancha not in CANCHAS:
             return Respuesta(404, {"error": "cancha desconocida"})
 
-        return Respuesta(201, {"cancha": cancha, "fecha": fecha, "libres": self.repositorio.libres(cancha, fecha)})
+        # 200, no 201: un GET solo lee, no crea ningun recurso.
+        return Respuesta(200, {"cancha": cancha, "fecha": fecha, "libres": self.repositorio.libres(cancha, fecha)})
 
     def crear_reserva(self, cuerpo):
         for campo in CAMPOS_DE_RESERVA:

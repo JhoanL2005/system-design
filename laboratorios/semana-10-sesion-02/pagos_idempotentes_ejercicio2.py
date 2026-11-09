@@ -24,16 +24,25 @@ class ApiDePagos:
         return Respuesta(404, {"error": "ruta desconocida"})
 
     def crear_pago(self, solicitud):
-        # TODO: lee la clave con solicitud.cabeceras.get("Idempotency-Key").
-        # - Si la solicitud no trae clave, responde 400 con
-        #   {"error": "falta Idempotency-Key"}, sin cobrar.
-        # - Si la clave ya esta en self.respuestas_guardadas y el cuerpo es
-        #   el mismo de la primera vez, devuelve la respuesta guardada, sin
-        #   cobrar otra vez. Si el cuerpo es distinto, responde 422 con
-        #   {"error": "clave usada con otro cuerpo"}.
-        # - Si la clave es nueva: si la reserva no existe, 404 con
-        #   {"error": "reserva desconocida"}. Si existe, cobra con
-        #   self.pasarela.cobrar(estudiante, monto), arma la respuesta 201
-        #   con {"id": id del cobro, "reserva_id": ..., "monto": ...},
-        #   guardala junto con el cuerpo de la solicitud, y devuelvela.
-        raise NotImplementedError
+        clave = solicitud.cabeceras.get("Idempotency-Key")
+        cuerpo = solicitud.cuerpo
+        if clave is None:
+            return Respuesta(400, {"error": "falta Idempotency-Key"})
+
+        # Clave ya vista: es un reintento. No se cobra otra vez.
+        if clave in self.respuestas_guardadas:
+            cuerpo_original, respuesta_guardada = self.respuestas_guardadas[clave]
+            if cuerpo != cuerpo_original:
+                return Respuesta(422, {"error": "clave usada con otro cuerpo"})
+            return respuesta_guardada
+
+        # Clave nueva.
+        reserva = self.repositorio.buscar(cuerpo["reserva_id"])
+        if reserva is None:
+            return Respuesta(404, {"error": "reserva desconocida"})
+        id_cobro = self.pasarela.cobrar(reserva["estudiante"], cuerpo["monto"])
+        respuesta = Respuesta(201, {"id": id_cobro, "reserva_id": reserva["id"], "monto": cuerpo["monto"]})
+        # Se guarda una copia del cuerpo, para que cambiar el diccionario
+        # del cliente despues no cambie lo que se compara en un reintento.
+        self.respuestas_guardadas[clave] = (dict(cuerpo), respuesta)
+        return respuesta
