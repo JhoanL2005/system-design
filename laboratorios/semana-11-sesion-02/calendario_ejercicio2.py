@@ -33,26 +33,43 @@ class CalendarioDeCancha:
         self._reservas = {}
 
     def horas_de(self, estudiante):
-        # TODO 1: cuantas horas suman las reservas del estudiante en este
-        # calendario.
-        raise NotImplementedError
+        total = 0 
+        for reserva in self._reservas.values():
+            if reserva.estudiante == estudiante:
+                total += reserva.franja.duracion()
+        return total
+
+    def choca_con_otra(self, franja):
+        for reserva in self._reservas.values():
+            if reserva.franja.se_solapa_con(franja):
+
 
     def reservar(self, id_reserva, estudiante, inicio, fin):
-        # TODO 2: crea la FranjaHoraria con la fecha del calendario (si es
-        # invalida, su propio ValueError basta) y, en este orden:
-        # - id ya usado en este calendario: ValueError("id repetido");
-        # - se solapa con otra reserva: ValueError("franja ocupada");
-        # - el estudiante pasaria de MAXIMO_HORAS_POR_ESTUDIANTE:
-        #   ValueError("limite de horas alcanzado").
-        # Si todo se cumple, guarda la Reserva en self._reservas por su id.
-        raise NotImplementedError
+        franja = FranjaHoraria(self.fecha, inicio, fin)
+
+        if id_reserva in self._reservas:
+            raise ValueError("Reserva con ID duplicado")
+        if self.horas_de(estudiante) + franja.duracion > MAXIMO_HORAS_POR_ESTUDIANTE:
+            raise ValueError("Maximo de hor")
+        if self.choca_con_otra(franja):
+            raise ValueError("Franja ocupada")
+
+        self._reservas[id_reserva] = Reserva(id_reserva, estudiante, franja)
 
     def mover(self, id_reserva, nuevo_inicio, nuevo_fin):
-        # TODO 3: cambia la franja de una reserva existente, con las mismas
-        # dos reglas, sin comparar la reserva consigo misma.
-        # Si el id no existe: ValueError("reserva desconocida").
-        raise NotImplementedError
+        if id_reserva not in self._reservas:
+            raise ValueError("Reserva Desconocida")
 
+        reserva = self._reservas[id_reserva]
+        nueva_franja = FranjaHoraria(self.fecha, nuevo_inicio, nuevo_fin)
+        if self.choca_con_otra(nueva_franja):
+            raise ValueError("Franja ocupada")
+
+        horas_actuales = self.horas_de(reserva.estudiante) - self.franja.duracion()
+        if horas_actuales + nueva_franja.duracion() > MAXIMO_HORAS_POR_ESTUDIANTE:
+            raise ValueError("Horas maximas alcanzadas")
+
+        
     def cancelar(self, id_reserva):
         # TODO 4: borra la reserva. Si el id no existe:
         # ValueError("reserva desconocida").

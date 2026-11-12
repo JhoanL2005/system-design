@@ -13,7 +13,7 @@ from http_simulado import Solicitud
 from reservas_acopladas import SOLICITUDES_DE_PRUEBA
 
 if __name__ == "__main__":
-    repositorio = RepositorioSqlite(":memory:")
+    repositorio = RepositorioEnMemoria()
     api = ApiHttp(ReservarCancha(repositorio))
     for cuerpo in SOLICITUDES_DE_PRUEBA:
         respuesta = api.manejar(Solicitud("POST", "/v1/reservas", cuerpo))
