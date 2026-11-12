@@ -38,7 +38,7 @@ class FranjaHoraria:
 
     def __post_init__(self):
         if self.inicio >= self.fin or self.inicio < HORA_DE_APERTURA or self.fin > HORA_DE_CIERRE:
-            ValueError()
+            raise ValueError("franja invalida")
 
             
 
