@@ -1,4 +1,4 @@
-"""Ejercicio 1: la lista de espera, primero consultando y despues con
+ """Ejercicio 1: la lista de espera, primero consultando y despues con
 Observer.
 
 Parte A (ya escrita, no la cambies): beto quiere la cancha-1 el martes de
@@ -7,7 +7,7 @@ numero de segundos si la franja se libero. ana cancela a los 5500 segundos
 (poco mas de hora y media). simular_consultas cuenta cuantas consultas hizo la app
 hasta que beto se entero.
 
-Parte B (TODO 1 a 3): el calendario avisa cuando una franja se libera, a
+Parte B ( 1 a 3): el calendario avisa cuando una franja se libera, a
 quien se haya suscrito. Nadie pregunta.
 
 Corre el archivo con:
@@ -58,8 +58,20 @@ class CalendarioObservable(CalendarioDeCancha):
     # TODO 2: sobrescribe cancelar. Guarda la franja de la reserva, cancela
     # como lo hace CalendarioDeCancha, y despues llama al_liberarse(cancha,
     # franja) de cada observador, en el orden en que se suscribieron.
-    pass
+    def __init__(self, cancha, fecha):
+        super().__init__(cancha, fecha)
+        self._observadores = []
 
+    def mirame(self, observador: ObservadorDeCalendario):
+        self._observadores.append(observador)
+
+    def cancelar(self, id_reserva):
+        franja = self.franja_de(id_reserva)
+
+        super().cancelar(id_reserva)
+
+        for observador in self._observadores:
+            observador.al_liberarse(self.cancha, franja)
 
 class ListaDeEspera(ObservadorDeCalendario):
     def __init__(self, notificador):
@@ -67,13 +79,24 @@ class ListaDeEspera(ObservadorDeCalendario):
         self.esperando = {}
 
     def anotar(self, estudiante, franja):
-        # TODO 3: agrega al estudiante al final de la lista de esa franja
-        # (self.esperando[franja] es una lista). Despues escribe
-        # al_liberarse: si alguien espera esa franja, saca al primero de la
-        # lista y le envia, con el notificador:
-        #     "Se libero cancha-1 el 2026-11-10 de 18 a 19"
-        # Si nadie la espera, no hace nada.
-        raise NotImplementedError
+
+
+        if franja not in self.esperando:
+            self.esperando[franja] = []
+
+        self.esperando[franja].append(estudiante)
+
+    def al_liberarse(self, cancha, franja):
+
+
+        if (len(self.esperando.get(franja, []))==0):
+            return
+
+        primero = self.esperando[franja].pop(0)
+
+        notificacion = f'Se libero {cancha} de la fecha {franja.fecha} en el horario {franja}'
+        self.notificador.enviar(primero, notificacion)
+
 
 
 if __name__ == "__main__":
