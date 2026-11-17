@@ -1,4 +1,4 @@
- """Ejercicio 1: la lista de espera, primero consultando y despues con
+"""Ejercicio 1: la lista de espera, primero consultando y despues con
 Observer.
 
 Parte A (ya escrita, no la cambies): beto quiere la cancha-1 el martes de
@@ -7,7 +7,7 @@ numero de segundos si la franja se libero. ana cancela a los 5500 segundos
 (poco mas de hora y media). simular_consultas cuenta cuantas consultas hizo la app
 hasta que beto se entero.
 
-Parte B ( 1 a 3): el calendario avisa cuando una franja se libera, a
+Parte B (TODO 1 a 3): el calendario avisa cuando una franja se libera, a
 quien se haya suscrito. Nadie pregunta.
 
 Corre el archivo con:
@@ -51,27 +51,24 @@ class ObservadorDeCalendario:
 
 
 class CalendarioObservable(CalendarioDeCancha):
-    # TODO 1: en __init__, ademas de lo que hace CalendarioDeCancha, una
-    # lista vacia de observadores. Escribe suscribir(observador), que lo
-    # agrega a esa lista.
-
-    # TODO 2: sobrescribe cancelar. Guarda la franja de la reserva, cancela
-    # como lo hace CalendarioDeCancha, y despues llama al_liberarse(cancha,
-    # franja) de cada observador, en el orden en que se suscribieron.
     def __init__(self, cancha, fecha):
         super().__init__(cancha, fecha)
         self._observadores = []
 
-    def mirame(self, observador: ObservadorDeCalendario):
+    def suscribir(self, observador):
         self._observadores.append(observador)
 
     def cancelar(self, id_reserva):
+        # La franja se guarda antes de cancelar, porque despues la reserva
+        # ya no existe. Si el id no existe, franja_de lanza y nadie se
+        # entera.
         franja = self.franja_de(id_reserva)
-
         super().cancelar(id_reserva)
-
-        for observador in self._observadores:
+        # Se avisa despues de cambiar el estado: quien reciba el aviso ya
+        # ve la franja libre.
+        for observador in list(self._observadores):
             observador.al_liberarse(self.cancha, franja)
+
 
 class ListaDeEspera(ObservadorDeCalendario):
     def __init__(self, notificador):
@@ -79,24 +76,15 @@ class ListaDeEspera(ObservadorDeCalendario):
         self.esperando = {}
 
     def anotar(self, estudiante, franja):
-
-
-        if franja not in self.esperando:
-            self.esperando[franja] = []
-
-        self.esperando[franja].append(estudiante)
+        self.esperando.setdefault(franja, []).append(estudiante)
 
     def al_liberarse(self, cancha, franja):
-
-
-        if (len(self.esperando.get(franja, []))==0):
+        fila = self.esperando.get(franja, [])
+        if not fila:
             return
-
-        primero = self.esperando[franja].pop(0)
-
-        notificacion = f'Se libero {cancha} de la fecha {franja.fecha} en el horario {franja}'
-        self.notificador.enviar(primero, notificacion)
-
+        primero = fila.pop(0)
+        texto = f"Se libero {cancha} el {franja.fecha} de {franja.inicio} a {franja.fin}"
+        self.notificador.enviar(primero, texto)
 
 
 if __name__ == "__main__":

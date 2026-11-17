@@ -51,3 +51,103 @@ clase completa. Corre las pruebas con:
 
 from eventos_ejercicio2 import ObservadorDeReservas
 from reservas import MAXIMO_HORAS_POR_ESTUDIANTE, FranjaHoraria
+
+
+class ListaDeEsperaConPlazo(ObservadorDeReservas):
+    def __init__(self, calendario, notificador, reloj, minutos_para_aceptar=15):
+        self.calendario = calendario
+        self.notificador = notificador
+        self.reloj = reloj
+        self.minutos_para_aceptar = minutos_para_aceptar
+        self._filas = {}
+        self._ofertas = {}
+
+    def anotar(self, estudiante, inicio, fin):
+        franja = self._franja(inicio, fin)
+        if estudiante in self._filas.get(franja, []) or self._tiene_la_oferta(estudiante, franja):
+            raise ValueError("ya esta en la lista")
+        if self.calendario.esta_libre(inicio, fin):
+            raise ValueError("la franja esta libre")
+        self._filas.setdefault(franja, []).append(estudiante)
+
+    def aceptar(self, estudiante, inicio, fin, id_reserva):
+        franja = self._franja(inicio, fin)
+        if not self._tiene_la_oferta(estudiante, franja):
+            raise ValueError("no tienes una oferta")
+        if self._vencio(franja):
+            raise ValueError("oferta vencida")
+
+        oferta = self._ofertas.pop(franja)
+        try:
+            self.calendario.reservar(id_reserva, estudiante, inicio, fin)
+        except ValueError:
+            self._ofertas[franja] = oferta
+            raise
+
+    def revisar_vencidas(self):
+        vencidas = [franja for franja in self._ofertas if self._vencio(franja)]
+        for franja in vencidas:
+            estudiante, _ = self._ofertas.pop(franja)
+            self.notificador.enviar(estudiante, f"Vencio tu oferta de {self._texto(franja)}")
+        if vencidas:
+            self._repartir_ofertas()
+
+    def al_liberarse(self, cancha, franja):
+        if cancha != self.calendario.cancha:
+            return
+        self._repartir_ofertas()
+
+    def al_ocuparse(self, cancha, franja):
+        if cancha != self.calendario.cancha:
+            return
+        perdidas = [ofrecida for ofrecida in self._ofertas if ofrecida.se_solapa_con(franja)]
+        for ofrecida in perdidas:
+            estudiante, _ = self._ofertas.pop(ofrecida)
+            self.notificador.enviar(
+                estudiante, f"La franja {self._texto(ofrecida)} ya no esta disponible"
+            )
+
+    def _repartir_ofertas(self):
+        for franja in list(self._filas):
+            if franja in self._ofertas:
+                continue
+            if not self.calendario.esta_libre(franja.inicio, franja.fin):
+                continue
+            if any(franja.se_solapa_con(ofrecida) for ofrecida in self._ofertas):
+                continue
+            self._ofrecer_al_primero(franja)
+
+    def _ofrecer_al_primero(self, franja):
+        fila = self._filas[franja]
+        while fila:
+            estudiante = fila.pop(0)
+            horas = self.calendario.horas_de(estudiante) + franja.duracion()
+            if horas > MAXIMO_HORAS_POR_ESTUDIANTE:
+                self.notificador.enviar(
+                    estudiante,
+                    f"No puedes tomar {self._texto(franja)}: pasarias el limite de horas",
+                )
+                continue
+            vence = self.reloj.ahora() + self.minutos_para_aceptar
+            self._ofertas[franja] = (estudiante, vence)
+            self.notificador.enviar(
+                estudiante,
+                f"Tienes {self.minutos_para_aceptar} minutos para aceptar {self._texto(franja)}",
+            )
+            break
+        if not fila:
+            del self._filas[franja]
+
+    def _franja(self, inicio, fin):
+        return FranjaHoraria(self.calendario.fecha, inicio, fin)
+
+    def _tiene_la_oferta(self, estudiante, franja):
+        oferta = self._ofertas.get(franja)
+        return oferta is not None and oferta[0] == estudiante
+
+    def _vencio(self, franja):
+        _, vence = self._ofertas[franja]
+        return self.reloj.ahora() > vence
+
+    def _texto(self, franja):
+        return f"{self.calendario.cancha} {franja.fecha} {franja.inicio}-{franja.fin}"
