@@ -44,3 +44,75 @@ Esta vez no hay codigo de partida. Corre las pruebas con:
 
 from inventario_ejercicio2 import Recurso, Reservable
 from reservas import MAXIMO_HORAS_POR_ESTUDIANTE
+
+class CanchaDivisible(Recurso):
+  def __init__(self, nombre):
+      super().__init__(nombre)
+      self.tipo = "cancha"
+      self.mitades = [Reservable(nombre + "-a", "media cancha"), Reservable(nombre + "-b", "media cancha")]
+    
+  def esta_libre(self, inicio, fin):
+    for mitad in self.mitades:
+      if not mitad.calendario.esta_libre(inicio, fin):
+        return False
+    return True
+
+  def buscar(self, tipo, inicio, fin):
+    if tipo == "cancha":
+      if self.esta_libre(inicio, fin):
+        return [self.nombre]
+      return []
+    if tipo == "media cancha":
+      libres = []
+      for mitad in self.mitades:
+        libres += mitad.buscar(tipo, inicio, fin)
+      return libres
+    return []
+
+  def contar(self, tipo):
+    if tipo == "cancha":
+      return 1
+    if tipo == "media cancha":
+      return 2
+    return 0
+
+  def encontrar(self, nombre):
+    if nombre == self.nombre:
+      return self
+    for mitad in self.mitades:
+      encontrada = mitad.encontrar(nombre)
+      if encontrada is not None:
+        return encontrada
+    return None
+
+  def rutas(self, tipo, inicio, fin, ruta):
+    if tipo == "cancha":
+      if self.esta_libre(inicio, fin):
+        return [ruta + self.nombre]
+    if tipo == "media cancha":
+      _ruta = []
+      for mitad in self.mitades:
+        if mitad.calendario.esta_libre(inicio, fin):
+          _ruta += mitad.rutas(tipo, inicio, fin, ruta + self.nombre + " / ")
+      return _ruta
+    return []
+
+  def reservar(self, id_reserva, estudiante, inicio, fin):
+    for mitad in self.mitades:
+      if not mitad.calendario.esta_libre(inicio, fin):
+        raise ValueError("franja ocupada")
+
+    for mitad in self.mitades:
+      horas = mitad.calendario.horas_de(estudiante)
+      if horas + (fin - inicio) > MAXIMO_HORAS_POR_ESTUDIANTE:
+        raise ValueError("limite de horas alcanzado")
+
+    self.mitades[0].reservar(id_reserva + "-a", estudiante, inicio, fin)
+    self.mitades[1].reservar(id_reserva + "-b", estudiante, inicio, fin)
+        
+
+                      
+
+    
+
+    
