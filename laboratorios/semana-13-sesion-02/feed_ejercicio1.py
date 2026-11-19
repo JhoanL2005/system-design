@@ -39,14 +39,16 @@ class FeedEnEscritura:
     def publicar(self, publicacion):
         # TODO 1: agrega la publicacion a la lista "feed:<estudiante>" de cada
         # seguidor del autor, con self.almacen.agregar.
-        raise NotImplementedError
+        for estudiante in self.seguidores.get(publicacion.autor, []):
+            self.almacen.agregar(f"feed:{estudiante}", publicacion)
+        
+
 
     def leer(self, estudiante, cantidad=10):
         # TODO 2: lee la lista "feed:<estudiante>" (una sola lectura) y devuelve
         # las `cantidad` mas recientes, con mas_recientes.
-        raise NotImplementedError
-
-
+        return mas_recientes(self.almacen.leer(f"feed:{estudiante}"), cantidad)
+    
 class FeedEnLectura:
     def __init__(self):
         self.almacen = Almacen()
@@ -60,14 +62,17 @@ class FeedEnLectura:
 
     def publicar(self, publicacion):
         # TODO 3: agrega la publicacion una sola vez, a la lista "autor:<autor>".
-        raise NotImplementedError
+        self.almacen.agregar(f"autor:{publicacion.autor}", publicacion)
 
     def leer(self, estudiante, cantidad=10):
         # TODO 4: lee la lista "autor:<autor>" de cada autor que sigue el
         # estudiante (una lectura por autor), juntalas y devuelve las
         # `cantidad` mas recientes.
-        raise NotImplementedError
+        posts = []
+        for siguiendo in self.seguidos.get(estudiante, []):
+            posts += self.almacen.leer(f"autor:{siguiendo}")
 
+        return mas_recientes(posts, cantidad)
 
 def simular(feed):
     for i in range(10):
