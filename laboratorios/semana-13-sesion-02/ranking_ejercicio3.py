@@ -39,3 +39,57 @@ Esta vez no hay codigo de partida. Corre las pruebas con:
 
 from actividad import Publicacion
 # TODO: escribe aqui la clase OrdenadorDeFeed.
+MINUTOS_POR_SEMANA = 7*24*60
+
+class OrdenadorDeFeed:
+    def __init__(self, interacciones, equipos_de):
+      self.interacciones = interacciones
+      self.equipos_de = equipos_de
+
+    def puntaje(self, publicacion, estudiante, ahora):
+      base = self.interacciones.get(publicacion.id, 0) + 1
+
+      if publicacion.autor in self.equipos_de.get(estudiante, []):
+        base *= 3
+
+      horas = (ahora - publicacion.momento) // 60
+
+      return base / (1 + horas)
+
+    def ordenar(self, publicaciones, estudiante, ahora, cantidad):
+      pendientes = sorted(
+        publicaciones, 
+        key=lambda p: (-self.puntaje(p, estudiante, ahora), -p.momento, p.id),
+      )
+
+      resultado = []
+
+      while pendientes and len(resultado) < cantidad:
+        elegida = pendientes [0]
+
+        seria_la_tercera = (
+          len(resultado) >= 2
+          and resultado[-1].autor == elegida.autor
+          and resultado[-2].autor == elegida.autor
+        ) 
+
+        if seria_la_tercera:
+          for otra in pendientes:
+            if otra.autor != elegida.autor:
+              elegida = otra
+              break
+
+        resultado.append(elegida)
+        pendientes.remove(elegida)
+
+      return resultado
+
+    def espacios_mas_reservados(self,reservas, ahora, cantidad):
+      conteo = {}
+
+      for espacio, momento in reservas:
+        if ahora - MINUTOS_POR_SEMANA < momento <= ahora:
+          conteo[espacio] = conteo.get(espacio, 0) + 1
+
+      ordenados = sorted(conteo.items(), key=lambda par:(-par[1], par[0]))
+      return ordenados[:cantidad]
